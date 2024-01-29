@@ -30,8 +30,8 @@ if __name__ == "__main__":
     # Print or use the resulting DataFrames as needed
     print("Training Set:")
     print(train_set.head())
-    train_set.to_csv('train.csv')
+    train_set.to_csv('Human Action Recognition/train.csv')
 
     print("\nValidation Set:")
     print(valid_set.head())
-    train_set.to_csv('test.csv')
+    train_set.to_csv('Human Action Recognition/test.csv')
