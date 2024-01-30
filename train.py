@@ -4,15 +4,13 @@ import torch.optim as optim
 from model import build_model
 import config
 import albumentations as A
-from sklearn.metrics import classification_report
-import matplotlib.pyplot as plt
+from albumentations.pytorch import ToTensorV2
+from plots import save_plots
 from tqdm import tqdm
 from utils import (
     get_loaders,
     check_accuracy,
-    save_checkpoint,
-    load_checkpoint
-)
+    save_checkpoint)
 
 
 def train_fn(train_loader, DEVICE, model, optim, loss_fn, scaler):
@@ -36,7 +34,7 @@ def train_fn(train_loader, DEVICE, model, optim, loss_fn, scaler):
     for idx, batch in enumerate(prog_bar):
         cnt += 1
         # Get a batch of 15 frames features and labels
-        features, labels = batch['frames'].to(DEVICE), batch['label'].to(DEVICE)
+        features, labels = batch['image'].to(DEVICE), batch['label'].to(DEVICE)
 
         optim.zero_grad()
         with torch.cuda.amp.autocast():
@@ -59,61 +57,59 @@ def train_fn(train_loader, DEVICE, model, optim, loss_fn, scaler):
 
 
 def main():
-    model = build_model(True, 10).to(config.DEVICE)
+    model = build_model(True, 15).to(config.DEVICE)
     loss_fn = nn.CrossEntropyLoss().to(config.DEVICE)
     optimizer = optim.Adam(model.parameters(), lr=config.LEARNING_RATE)
 
     train_transform = A.Compose([
-        A.ToPILImage(),
-        A.Resize((config.IMAGE_SIZE, config.IMAGE_SIZE)),
-        A.RandomRotation(45),
-        A.RandomAutocontrast(p=0.5),
-        A.ToTensor(),
+        A.Resize(config.IMAGE_SIZE, config.IMAGE_SIZE),
+        A.RandomRotate90(p=0.5),
+        A.RandomContrast(p=0.5),
         A.Normalize(
             mean=[0.485, 0.456, 0.406],
             std=[0.229, 0.224, 0.225]
-        )
+        ),
+        ToTensorV2()
     ])
 
     test_transform = A.Compose([
-        A.ToPILImage(),
-        A.Resize((config.IMAGE_SIZE, config.IMAGE_SIZE)),
-        A.ToTensor(),
+        A.Resize(config.IMAGE_SIZE, config.IMAGE_SIZE),
         A.Normalize(
             mean=[0.485, 0.456, 0.406],
             std=[0.229, 0.224, 0.225]
-        )
+        ),
+        ToTensorV2()
     ])
 
     train_loader, val_loader = get_loaders(
         config.TRAIN_DF,
         config.TEST_DF,
+        config.TRAIN_DIR,
+        config.TEST_DIR,
         train_transform,
         test_transform,
         config.BATCH_SIZE,
         config.NUM_WORKERS,
         config.PIN_MEMORY
     )
-
+    scheduler = optim.lr_scheduler.MultiStepLR(
+        optimizer, milestones=[7], gamma=0.1, verbose=True
+    )
     scaler = torch.cuda.amp.GradScaler()
     train_losses = []
     train_accuracies = []
     test_losses = []
     test_accuracies = []
-    all_test_preds = []
-    all_labels = []
 
     for epoch in range(config.NUM_EPOCHS):
         best_val_loss = 0.0
         train_loss, train_accuracy = train_fn(train_loader, config.DEVICE, model, optimizer, loss_fn, scaler)
-        test_loss, test_accuracy, test_correct, test_preds, test_labels = check_accuracy(val_loader, model, loss_fn,
-                                                                                         DEVICE)
+        test_loss, test_accuracy = check_accuracy(val_loader, model, loss_fn,
+                                                                                         config.DEVICE)
         train_losses.append(train_loss)
         train_accuracies.append(train_accuracy)
         test_losses.append(test_loss)
         test_accuracies.append(test_accuracy)
-        all_test_preds.extend(test_preds.cpu().detach().numpy())
-        all_labels.extend(test_labels.cpu().detach().numpy())
 
         if test_loss < best_val_loss:
             best_val_loss = test_loss
@@ -129,27 +125,10 @@ def main():
         else:
             print('Validation loss did not improve')
 
-    report = classification_report(all_labels, all_test_preds)
-    report_filename = 'evaluation_report.txt'
-    with open(report_filename, 'w') as file:
-        file.write(report)
+    scheduler.step()
+    print('-'*50)
 
-    # Plot training and testing losses and accuracies
-    plt.figure(figsize=(10, 5))
-    plt.subplot(1, 2, 1)
-    plt.plot(train_losses, label='Training Loss')
-    plt.plot(test_losses, label='Testing Loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.legend()
-    plt.subplot(1, 2, 2)
-    plt.plot(train_accuracies, label='Training Accuracy')
-    plt.plot(test_accuracies, label='Testing Accuracy')
-    plt.xlabel('Epoch')
-    plt.ylabel('Accuracy')
-    plt.legend()
-    plt.show()
-
+    save_plots(train_accuracies, test_accuracies, train_losses, test_losses)
 
 if __name__ == "__main__":
     main()

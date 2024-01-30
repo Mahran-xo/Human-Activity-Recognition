@@ -22,7 +22,7 @@ def shuffle_csv(pth, train_ratio, valid_ratio):
 
 if __name__ == "__main__":
     # Specify the path to your CSV file
-    csv_path = 'Human Action Recognition/Training_set.csv'
+    csv_path = 'Human Action Recognition/data.csv'
 
     # Call the function with the specified arguments
     train_set, valid_set = shuffle_csv(csv_path, .80, .20)

@@ -6,8 +6,9 @@ import pandas as pd
 
 
 class HARDataset(Dataset):
-    def __init__(self, df,transform=None):
+    def __init__(self, dir, df,transform=None):
         self.df = pd.read_csv(df)
+        self.dir = dir
         self.image_names = self.df.filename
         self.labels = list(self.df.label)
         self.transform = transform
@@ -33,10 +34,11 @@ class HARDataset(Dataset):
         return len(self.image_names)
 
     def __getitem__(self, index):
-        img_path = os.path.join('Human Action Recognition/', self.image_names[index])
+        img_path = os.path.join(self.dir, self.image_names[index])
         label = self.labels[index]
         image = np.array(Image.open(img_path).convert("RGB"))
-        image = self.transform(image=image)["image"]
+        augmentations = self.transform(image=image)
+        image = augmentations['image']
         class_num = self.class_names.index(label)
         return {
             'image': image,

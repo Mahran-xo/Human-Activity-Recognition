@@ -2,15 +2,16 @@ import os
 import torch
 
 
-TRAIN_DF = os.path.join('..', 'input', 'Human Action Recognition', 'test.csv')
-TEST_DF = os.path.join('..', 'input', 'Human Action Recognition', 'test.csv')
+TRAIN_DF = os.path.join( 'Human Action Recognition', 'data.csv')
+TEST_DF = os.path.join('Human Action Recognition', 'data.csv')
+TRAIN_DIR=os.path.join('Human Action Recognition', 'train')
+TEST_DIR= os.path.join('Human Action Recognition', 'train')
 
 # hyperparams
-LEARNING_RATE = 1e-4
-DECAY = 1e-5
+LEARNING_RATE = 0.0001
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-BATCH_SIZE = 8
-NUM_EPOCHS = 200
+BATCH_SIZE = 32
+NUM_EPOCHS = 20
 PIN_MEMORY = True
 IMAGE_SIZE = 224 # Image size of resize when applying transforms.
 NUM_WORKERS = 4 # Number of parallel processes for data preparation.
