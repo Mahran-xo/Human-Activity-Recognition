@@ -2,8 +2,8 @@ import os
 import torch
 
 
-TRAIN_DF = os.path.join( 'Human Action Recognition', 'data.csv')
-TEST_DF = os.path.join('Human Action Recognition', 'data.csv')
+TRAIN_DF = os.path.join( 'Human Action Recognition', 'train.csv')
+TEST_DF = os.path.join('Human Action Recognition', 'test.csv')
 
 # hyperparams
 LEARNING_RATE = 0.0001

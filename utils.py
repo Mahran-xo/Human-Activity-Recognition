@@ -21,8 +21,6 @@ def load_checkpoint(checkpoint, model):
 def get_loaders(
         train_df,
         test_df,
-        train_dir,
-        test_dir,
         train_transform,
         test_transform,
         batch_size,
@@ -31,8 +29,6 @@ def get_loaders(
 ):
     """
 
-    :param train_dir:
-    :param test_dir:
     :param train_df:
     :param test_df:
     :param train_transform:
@@ -44,7 +40,6 @@ def get_loaders(
     """
     train_ds = HARDataset(
         df=train_df,
-        dir=train_dir,
         transform=train_transform
 
     )
@@ -59,7 +54,6 @@ def get_loaders(
 
     val_ds = HARDataset(
         df=test_df,
-        dir=test_dir,
         transform=test_transform
     )
 
@@ -72,7 +66,6 @@ def get_loaders(
     )
 
     return train_loader, val_loader
-
 
 def check_accuracy(test_loader, model, loss_fn, DEVICE="cuda"):
     test_loss = 0.0
@@ -101,10 +94,13 @@ def check_accuracy(test_loader, model, loss_fn, DEVICE="cuda"):
 
             test_correct += (predicted == labels).sum().item()
 
+            # Append true and predicted labels to the lists
+            all_true_labels.extend(labels.cpu().numpy())
+            all_predicted_labels.extend(predicted.cpu().numpy())
+
     test_loss /= cnt
     test_accuracy = 100 * (test_correct / len(test_loader.dataset))
     print('Test Loss: {:.4f}, Test Accuracy: {:.2f}%'.format(test_loss, test_accuracy))
-
 
     # Convert lists to NumPy arrays
     true_labels_array = np.array(all_true_labels)
