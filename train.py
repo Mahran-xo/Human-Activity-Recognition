@@ -84,8 +84,6 @@ def main():
     train_loader, val_loader = get_loaders(
         config.TRAIN_DF,
         config.TEST_DF,
-        config.TRAIN_DIR,
-        config.TEST_DIR,
         train_transform,
         test_transform,
         config.BATCH_SIZE,
