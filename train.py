@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from model import build_model
 import config
+from torchvision import models
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from plots import save_plots
@@ -14,6 +14,7 @@ from utils import (
 
 
 def train_fn(train_loader, DEVICE, model, optim, loss_fn, scaler):
+    model.train()
     """
     :param train_loader:
     :param DEVICE:
@@ -34,13 +35,14 @@ def train_fn(train_loader, DEVICE, model, optim, loss_fn, scaler):
     for idx, batch in enumerate(prog_bar):
         cnt += 1
         # Get a batch of 15 frames features and labels
-        features, labels = batch['image'].to(DEVICE), batch['label'].to(DEVICE)
+        features, labels = batch['image'].float().to(DEVICE), batch['label'].to(DEVICE)
 
-        optim.zero_grad()
+        
         with torch.cuda.amp.autocast():
             outputs = model(features)
             loss = loss_fn(outputs, labels)
 
+        optim.zero_grad()
         scaler.scale(loss).backward()
         scaler.step(optim)
         scaler.update()
@@ -57,27 +59,25 @@ def train_fn(train_loader, DEVICE, model, optim, loss_fn, scaler):
 
 
 def main():
-    model = build_model(True, 15).to(config.DEVICE)
+    model = models.vgg16(pretrained=True)
+    model.classifier[6] = nn.Linear(model.classifier[6].in_features,15)
+    model = model.to(config.DEVICE)
     loss_fn = nn.CrossEntropyLoss().to(config.DEVICE)
     optimizer = optim.Adam(model.parameters(), lr=config.LEARNING_RATE)
+
 
     train_transform = A.Compose([
         A.Resize(config.IMAGE_SIZE, config.IMAGE_SIZE),
         A.RandomRotate90(p=0.5),
+        A.HorizontalFlip(p=0.5),        # Added horizontal flip with 50% probability
+        A.VerticalFlip(p=0.5),          # Added vertical flip with 50% probability
         A.RandomContrast(p=0.5),
-        A.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225]
-        ),
+        A.RandomBrightness(p=0.5),      # Added random brightness with 50% probability
         ToTensorV2()
     ])
 
     test_transform = A.Compose([
         A.Resize(config.IMAGE_SIZE, config.IMAGE_SIZE),
-        A.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225]
-        ),
         ToTensorV2()
     ])
 
@@ -98,35 +98,35 @@ def main():
     train_accuracies = []
     test_losses = []
     test_accuracies = []
-
-    for epoch in range(config.NUM_EPOCHS):
-        best_val_loss = 0.0
+    best_val_loss = float('inf')  
+    for _ in range(config.NUM_EPOCHS):
+        
         train_loss, train_accuracy = train_fn(train_loader, config.DEVICE, model, optimizer, loss_fn, scaler)
-        test_loss, test_accuracy = check_accuracy(val_loader, model, loss_fn,
-                                                                                         config.DEVICE)
+        test_loss, test_accuracy = check_accuracy(val_loader, model, loss_fn, config.DEVICE)
         train_losses.append(train_loss)
         train_accuracies.append(train_accuracy)
         test_losses.append(test_loss)
         test_accuracies.append(test_accuracy)
 
         if test_loss < best_val_loss:
-            best_val_loss = test_loss
+            best_val_loss = test_loss       
             print('Validation loss improved')
             # save model
             checkpoint = {
                 "state_dict": model.state_dict(),
                 "optimizer": optimizer.state_dict(),
-                'val_acc': test_loss,
+                'val_loss': test_loss,
             }
 
             save_checkpoint(checkpoint)
         else:
+            
             print('Validation loss did not improve')
 
-    scheduler.step()
-    print('-'*50)
+        # scheduler.step()
+        # print('-'*50)
 
-    save_plots(train_accuracies, test_accuracies, train_losses, test_losses)
+    save_plots(train_accuracies, test_accuracies, train_losses, test_losses,'metrics')
 
 if __name__ == "__main__":
     main()

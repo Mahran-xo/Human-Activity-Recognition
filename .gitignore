@@ -1,3 +1,5 @@
 .idea/
 __pycache__/
 Human Action Recognition/
+my_checkpoint.pth.tar
+infrence/

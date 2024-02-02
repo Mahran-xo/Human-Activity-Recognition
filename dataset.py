@@ -6,40 +6,42 @@ import pandas as pd
 
 
 class HARDataset(Dataset):
-    def __init__(self, df,transform=None):
+    def __init__(self, df, transform=None):
         self.df = pd.read_csv(df)
-        self.image_names = self.df.filename
-        self.labels = list(self.df.label)
         self.transform = transform
-        self.class_names = [
-            'calling',
-            'clapping',
-            'cycling',
-            'dancing',
-            'drinking',
-            'eating',
-            'fighting',
-            'hugging',
-            'laughing',
-            'listening_to_music',
-            'running',
-            'sitting',
-            'sleeping',
-            'texting',
-            'using_laptop'
-        ]
+
+        # Create a mapping from class names to numerical indices
+        self.class_to_idx = {'texting': 0,
+                                'sitting': 1,
+                                'sleeping': 2,
+                                'fighting': 3,
+                                'running': 4,
+                                'calling': 5,
+                                'dancing': 6,
+                                'using_laptop': 7,
+                                'laughing': 8,
+                                'cycling': 9,
+                                'hugging': 10,
+                                'listening_to_music': 11,
+                                'clapping': 12,
+                                'eating': 13,
+                                'drinking': 14}
 
     def __len__(self):
-        return len(self.image_names)
+        return len(self.df)
 
     def __getitem__(self, index):
-        img_path = os.path.join(self.image_names[index])
-        label = self.labels[index]
+        img_path = os.path.join(self.df.iloc[index, 1])
+        label_str = self.df.iloc[index, 2]
+        label_num = self.class_to_idx[label_str]  # Convert string label to numerical value
         image = np.array(Image.open(img_path).convert("RGB"))
-        augmentations = self.transform(image=image)
-        image = augmentations['image']
-        class_num = self.class_names.index(label)
+        
+        # Apply transformations if specified
+        if self.transform:
+            augmentations = self.transform(image=image)
+            image = augmentations['image']
+        
         return {
             'image': image,
-            'label': class_num
+            'label': label_num
         }

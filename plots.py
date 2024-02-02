@@ -2,19 +2,19 @@ import matplotlib.pyplot as plt
 import os
 
 
-def save_plots(train_acc, valid_acc, train_loss, valid_loss, out_dir = 'metrics'):
+def save_plots(train_accuracies, test_accuracies, train_losses, test_losses, out_dir='metrics'):
     """
     saving the plots for train and test accuracies and losses
     """
     # Accuracy plots.
     plt.figure(figsize=(10, 7))
     plt.plot(
-        train_acc, color='tab:blue', linestyle='-',
+        train_accuracies, color='tab:blue', linestyle='-',
         label='train accuracy'
     )
     plt.plot(
-        valid_acc, color='tab:red', linestyle='-',
-        label='validataion accuracy'
+        test_accuracies, color='tab:red', linestyle='-',
+        label='validation accuracy'
     )
     plt.xlabel('Epochs')
     plt.ylabel('Accuracy')
@@ -24,12 +24,12 @@ def save_plots(train_acc, valid_acc, train_loss, valid_loss, out_dir = 'metrics'
     # Loss plots.
     plt.figure(figsize=(10, 7))
     plt.plot(
-        train_loss, color='tab:blue', linestyle='-',
+        train_losses, color='tab:blue', linestyle='-',
         label='train loss'
     )
     plt.plot(
-        valid_loss, color='tab:red', linestyle='-',
-        label='validataion loss'
+        test_losses, color='tab:red', linestyle='-',
+        label='validation loss'
     )
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
