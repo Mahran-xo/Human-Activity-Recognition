@@ -3,10 +3,9 @@ import numpy as np
 import cv2
 import os
 import torch.nn.functional as F
-from torchvision import models
+from efficientnet_pytorch import EfficientNet
 import torch.nn as nn
 import glob
-import pathlib
 from albumentations.pytorch import ToTensorV2
 import config
 import albumentations as A
@@ -79,20 +78,21 @@ def inference(model, testloader, DEVICE):
 
 if __name__ == '__main__':
     DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    IMAGE_RESIZE = 224
+    IMAGE_RESIZE = 200
 
     transform = A.Compose([
             A.Resize(config.IMAGE_SIZE, config.IMAGE_SIZE),
-            ToTensorV2()
+            ToTensorV2(),
+
         ])
 
     os.makedirs('infrence', exist_ok=True)
     checkpoint = torch.load('my_checkpoint.pth.tar')
     
     # Load the model
-    model = models.googlenet(pretrained=True)
-    model.fc = nn.Linear(model.fc.in_features,15)
-    model = model.to(DEVICE)
+    model =  EfficientNet.from_pretrained('efficientnet-b0',in_channels=3,num_classes=15)
+    in_features = model._fc.in_features
+    model._fc = nn.Linear(in_features, 15) 
 
     model.load_state_dict(checkpoint['state_dict'])
     all_image_paths = glob.glob(os.path.join('Human Action Recognition', 'test', '*'))

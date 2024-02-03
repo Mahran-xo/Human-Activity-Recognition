@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import os
 
 
-def save_plots(train_accuracies, test_accuracies, train_losses, test_losses, out_dir='metrics'):
+def save_plots(train_accuracies, test_accuracies, train_losses, test_losses, out_dir='ActivityRecognition/metrics'):
     """
     saving the plots for train and test accuracies and losses
     """

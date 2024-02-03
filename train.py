@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import config
-from torchvision import models
+# from torchvision import models
+from efficientnet_pytorch import EfficientNet
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from plots import save_plots
@@ -59,26 +60,49 @@ def train_fn(train_loader, DEVICE, model, optim, loss_fn, scaler):
 
 
 def main():
-    model = models.vgg16(pretrained=True)
-    model.classifier[6] = nn.Linear(model.classifier[6].in_features,15)
+    model =  EfficientNet.from_pretrained('efficientnet-b0',in_channels=3,num_classes=15)
+    in_features = model._fc.in_features
+    model._fc = nn.Linear(in_features, 15) 
     model = model.to(config.DEVICE)
-    loss_fn = nn.CrossEntropyLoss().to(config.DEVICE)
+    class_weights = torch.FloatTensor([16.341463414634145,
+                                        14.692982456140351,
+                                        15.296803652968036,
+                                        14.01673640167364,
+                                        15.296803652968036,
+                                        14.692982456140351,
+                                        15.952380952380954,
+                                        16.10576923076923,
+                                        13.900414937759336,
+                                        14.502164502164504,
+                                        14.316239316239317,
+                                        15.876777251184834,
+                                        14.628820960698691,
+                                        14.316239316239317,
+                                        15.654205607476634]).to(config.DEVICE)
+    loss_fn = nn.CrossEntropyLoss(weight=class_weights).to(config.DEVICE)
     optimizer = optim.Adam(model.parameters(), lr=config.LEARNING_RATE)
 
 
     train_transform = A.Compose([
         A.Resize(config.IMAGE_SIZE, config.IMAGE_SIZE),
-        A.RandomRotate90(p=0.5),
-        A.HorizontalFlip(p=0.5),        # Added horizontal flip with 50% probability
-        A.VerticalFlip(p=0.5),          # Added vertical flip with 50% probability
-        A.RandomContrast(p=0.5),
-        A.RandomBrightness(p=0.5),      # Added random brightness with 50% probability
-        ToTensorV2()
+        A.RandomCrop(width=config.IMAGE_SIZE, height=config.IMAGE_SIZE),
+        A.Rotate(40),
+        A.HorizontalFlip(p=0.5),
+        A.VerticalFlip(p=0.1),
+        A.Normalize(
+           mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+        
+    ),
+    ToTensorV2(),
     ])
 
     test_transform = A.Compose([
         A.Resize(config.IMAGE_SIZE, config.IMAGE_SIZE),
-        ToTensorV2()
+        A.Normalize(
+        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+   
+    ),
+    ToTensorV2(),
     ])
 
     train_loader, val_loader = get_loaders(
@@ -91,7 +115,7 @@ def main():
         config.PIN_MEMORY
     )
     scheduler = optim.lr_scheduler.MultiStepLR(
-        optimizer, milestones=[7], gamma=0.1, verbose=True
+        optimizer, milestones=[i+2 for i in range(config.NUM_EPOCHS)], gamma=0.1, verbose=True
     )
     scaler = torch.cuda.amp.GradScaler()
     train_losses = []
@@ -99,8 +123,8 @@ def main():
     test_losses = []
     test_accuracies = []
     best_val_loss = float('inf')  
-    for _ in range(config.NUM_EPOCHS):
-        
+    for epoch in range(config.NUM_EPOCHS):
+        print('Epoch',epoch+1)
         train_loss, train_accuracy = train_fn(train_loader, config.DEVICE, model, optimizer, loss_fn, scaler)
         test_loss, test_accuracy = check_accuracy(val_loader, model, loss_fn, config.DEVICE)
         train_losses.append(train_loss)
@@ -123,8 +147,8 @@ def main():
             
             print('Validation loss did not improve')
 
-        # scheduler.step()
-        # print('-'*50)
+        scheduler.step()
+        print('-'*50)
 
     save_plots(train_accuracies, test_accuracies, train_losses, test_losses,'metrics')
 

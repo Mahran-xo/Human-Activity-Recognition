@@ -37,8 +37,6 @@ def get_loaders(
     """
 
 
-    # Create DataLoader with the WeightedRandomSampler
-    # train_loader = DataLoader(dataset=hard_dataset, batch_size=your_batch_size, sampler=weighted_sampler)
     train_ds = HARDataset(
         df=train_df,
         transform=train_transform
@@ -83,12 +81,12 @@ def check_accuracy(test_loader, model, loss_fn, DEVICE="cuda"):
     )
     model.eval()
     with torch.no_grad():
-        for idx, test_batch in enumerate(prog_bar):
+        for _, test_batch in enumerate(prog_bar):
             cnt += 1
             features, labels = test_batch['image'].float().to(DEVICE), test_batch['label'].to(DEVICE)
 
             
-            outputs = model(features)
+            outputs= model(features)
             loss = loss_fn(outputs, labels)
 
             _, predicted = torch.max(outputs, 1)

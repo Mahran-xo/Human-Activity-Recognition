@@ -40,7 +40,7 @@ class HARDataset(Dataset):
         if self.transform:
             augmentations = self.transform(image=image)
             image = augmentations['image']
-        
+
         return {
             'image': image,
             'label': label_num
